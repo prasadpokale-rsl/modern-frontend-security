@@ -1,0 +1,18 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clickjacking Test</title>
+</head>
+<body>
+    <h1>Clickjacking Test Page</h1>
+    <p>The dashboard below should not be allowed to load inside this iframe.</p>
+
+    <iframe
+        src="http://localhost:3000"
+        width="800"
+        height="500">
+    </iframe>
+</body>
+</html>
