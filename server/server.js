@@ -1,18 +1,67 @@
 const express = require("express");
 const path = require("path");
+const crypto = require("crypto");
+const helmet = require("helmet");
 
-const { user, defaultSettings } = require("./data");
+const data = require("./data");
+
+const user = data.user;
+const defaultSettings = data.defaultSettings;
+
+if (!user || !defaultSettings) {
+    throw new Error("User data or default settings could not be loaded from server/data.js");
+}
+
+// Expose only non-sensitive user information to the frontend.
+const publicUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role
+};
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
+// Generate a unique nonce for every request.
+app.use((req, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
+    next();
+});
+
+// Configure security headers and Content Security Policy.
+app.use(
+    helmet({
+        xFrameOptions: {
+            action: "deny"
+        },
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: [
+                    "'self'",
+                    (req, res) => `'nonce-${res.locals.cspNonce}'`
+                ],
+                scriptSrcAttr: ["'none'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:"],
+                connectSrc: ["'self'"],
+                objectSrc: ["'none'"],
+                frameAncestors: ["'none'"],
+                upgradeInsecureRequests: null
+            }
+        }
+    })
+);
+
 /*
  * Home page
  */
 app.get("/", (req, res) => {
-    const initialUserData = JSON.stringify(user);
+    const initialUserData = JSON.stringify(publicUser);
+    const nonce = res.locals.cspNonce;
 
     res.send(`
         <!DOCTYPE html>
@@ -75,7 +124,7 @@ app.get("/", (req, res) => {
                 </section>
             </main>
 
-            <script>
+            <script nonce="${nonce}">
                 window.initialUser = ${initialUserData};
             </script>
 
@@ -89,7 +138,7 @@ app.get("/", (req, res) => {
  * Profile API
  */
 app.get("/api/profile", (req, res) => {
-    res.json(user);
+    res.json(publicUser);
 });
 
 /*
@@ -102,9 +151,37 @@ app.get("/api/settings", (req, res) => {
 app.post("/api/settings", (req, res) => {
     const incomingSettings = req.body;
 
-    const settings = {};
+    const allowedSettings = {
+        theme: ["light", "dark"],
+        language: ["en", "fr"],
+        fontSize: ["small", "medium", "large"]
+    };
 
-    for (const key in incomingSettings) {
+    if (
+        !incomingSettings ||
+        typeof incomingSettings !== "object" ||
+        Array.isArray(incomingSettings)
+    ) {
+        return res.status(400).json({
+            message: "Invalid settings data."
+        });
+    }
+
+    const settings = Object.create(null);
+
+    for (const key of Object.keys(incomingSettings)) {
+        if (!Object.hasOwn(allowedSettings, key)) {
+            return res.status(400).json({
+                message: `Invalid setting: ${key}`
+            });
+        }
+
+        if (!allowedSettings[key].includes(incomingSettings[key])) {
+            return res.status(400).json({
+                message: `Invalid value for ${key}.`
+            });
+        }
+
         settings[key] = incomingSettings[key];
     }
 
@@ -118,6 +195,8 @@ app.post("/api/settings", (req, res) => {
  * Account page
  */
 app.get("/account", (req, res) => {
+    const nonce = res.locals.cspNonce;
+
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -185,7 +264,7 @@ app.get("/account", (req, res) => {
                 <p id="status"></p>
             </div>
 
-            <script>
+            <script nonce="${nonce}">
                 document
                     .getElementById("delete-account")
                     .addEventListener("click", () => {
