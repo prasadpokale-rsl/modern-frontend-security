@@ -3,7 +3,22 @@ const path = require("path");
 const crypto = require("crypto");
 const helmet = require("helmet");
 
-const { user, defaultSettings } = require("./data");
+const data = require("./data");
+
+const user = data.user;
+const defaultSettings = data.defaultSettings;
+
+if (!user || !defaultSettings) {
+    throw new Error("User data or default settings could not be loaded from server/data.js");
+}
+
+// Expose only non-sensitive user information to the frontend.
+const publicUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role
+};
 
 const app = express();
 const PORT = 3000;
@@ -45,7 +60,7 @@ app.use(
  * Home page
  */
 app.get("/", (req, res) => {
-    const initialUserData = JSON.stringify(user);
+    const initialUserData = JSON.stringify(publicUser);
     const nonce = res.locals.cspNonce;
 
     res.send(`
@@ -123,7 +138,7 @@ app.get("/", (req, res) => {
  * Profile API
  */
 app.get("/api/profile", (req, res) => {
-    res.json(user);
+    res.json(publicUser);
 });
 
 /*
