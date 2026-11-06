@@ -7,21 +7,32 @@ const username =
     window.initialUser?.name ||
     "Guest";
 
-app.innerHTML = `
-    <section class="profile-card">
-        <h2>Welcome, ${username}</h2>
+// Create the profile card safely using DOM methods.
+const profileCard = document.createElement("section");
+profileCard.className = "profile-card";
 
-        <p>
-            Email:
-            ${window.initialUser?.email || "Unknown"}
-        </p>
+// Create the welcome heading.
+const heading = document.createElement("h2");
+heading.textContent = `Welcome, ${username}`;
 
-        <p>
-            Role:
-            ${window.initialUser?.role || "User"}
-        </p>
-    </section>
-`;
+// Create the email paragraph.
+const emailParagraph = document.createElement("p");
+emailParagraph.textContent =
+    `Email: ${window.initialUser?.email || "Unknown"}`;
+
+// Create the role paragraph.
+const roleParagraph = document.createElement("p");
+roleParagraph.textContent =
+    `Role: ${window.initialUser?.role || "User"}`;
+
+// Add elements to the profile card.
+profileCard.appendChild(heading);
+profileCard.appendChild(emailParagraph);
+profileCard.appendChild(roleParagraph);
+
+// Replace the app content with the safely created profile card.
+app.replaceChildren(profileCard);
+
 
 function prepareSettings(userSettings) {
     const settings = {};
