@@ -102,9 +102,41 @@ app.get("/api/settings", (req, res) => {
 app.post("/api/settings", (req, res) => {
     const incomingSettings = req.body;
 
-    const settings = {};
+    // Allow only the expected settings.
+    const allowedSettings = {
+        theme: ["light", "dark"],
+        language: ["en", "fr"],
+        fontSize: ["small", "medium", "large"]
+    };
 
-    for (const key in incomingSettings) {
+    // Validate the request body.
+    if (
+        !incomingSettings ||
+        typeof incomingSettings !== "object" ||
+        Array.isArray(incomingSettings)
+    ) {
+        return res.status(400).json({
+            message: "Invalid settings data."
+        });
+    }
+
+    const settings = Object.create(null);
+
+    for (const key of Object.keys(incomingSettings)) {
+        // Reject properties that are not part of the allowlist.
+        if (!Object.hasOwn(allowedSettings, key)) {
+            return res.status(400).json({
+                message: `Invalid setting: ${key}`
+            });
+        }
+
+        // Validate the value for each setting.
+        if (!allowedSettings[key].includes(incomingSettings[key])) {
+            return res.status(400).json({
+                message: `Invalid value for ${key}.`
+            });
+        }
+
         settings[key] = incomingSettings[key];
     }
 
